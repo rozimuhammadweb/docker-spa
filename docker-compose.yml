@@ -1,0 +1,59 @@
+services:
+  gateway:
+    build:
+      context: gateway/docker/nginx
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      - frontend-nginx
+      - api-nginx
+  frontend-nginx:
+    build:
+      context: ./frontend/docker
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/var/www/frontend
+      - ./frontend/docker/nginx/logs:/var/log/nginx
+    depends_on:
+      - php
+#    ports:            // When the gateway is not available.
+#      - "8080:80"
+  api-nginx:
+    build:
+      context: ./api/docker/nginx
+      dockerfile: Dockerfile
+    volumes:
+      - ./api:/var/www/api
+      - ./api/docker/nginx/logs:/var/log/nginx
+    #    ports:
+    #      - "8081:80"     // When the gateway is not available.
+    depends_on:
+      - php
+  frontend:
+    image: node:22-alpine
+    volumes:
+      - ./frontend:/var/www/frontend
+    working_dir: /var/www/frontend
+    tty: true
+  php:
+    build:
+      context: ./api/docker
+      dockerfile: Dockerfile
+    volumes:
+      - ./api:/var/www/api
+      - ./api/docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    working_dir: /var/www/api
+    tty: true
+    ports:
+      - "9000:9000"
+  pgsql:
+    image: postgres:17.4-alpine
+    environment:
+      POSTGRES_DB: 'docker_spa_db'
+      POSTGRES_USER: "root"
+      POSTGRES_PASSWORD: "secret"
+    volumes:
+      - ./api/docker/postgres/data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
